@@ -1,0 +1,430 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FalconGuard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: two stacked lanes (fraud defence over government service) joined by one vertical whitelist link; details panel and legend sit below. */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --ink:#0D1B2A; --muted:#566676; --line:#C5CED8;
+  --band-threat:#FBEFEE; --band-service:#EAF5F2;
+  --threat:#C0322B; --threat-soft:#F8DCD9;
+  --ok:#0B7A62; --ok-soft:#D6EEE7;
+  --core:#12263F; --on-core:#F2F6FA;
+  --defense:#2457A8; --defense-soft:#E1EAF8;
+  --gold:#9A6B12; --gold-soft:#F6EBD2;
+  --font-text:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A121C; --surface:#111D2B; --ink:#E6EDF5; --muted:#93A4B6; --line:#2B3B4E;
+  --band-threat:#1E1517; --band-service:#0E1E1C;
+  --threat:#FF7A70; --threat-soft:#3A1B1D;
+  --ok:#3CCBA4; --ok-soft:#123A31;
+  --core:#1E3A5F; --on-core:#F2F6FA;
+  --defense:#7BAAF2; --defense-soft:#16294A;
+  --gold:#E3B25A; --gold-soft:#3A2D14; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A121C; --surface:#111D2B; --ink:#E6EDF5; --muted:#93A4B6; --line:#2B3B4E;
+  --band-threat:#1E1517; --band-service:#0E1E1C;
+  --threat:#FF7A70; --threat-soft:#3A1B1D;
+  --ok:#3CCBA4; --ok-soft:#123A31;
+  --core:#1E3A5F; --on-core:#F2F6FA;
+  --defense:#7BAAF2; --defense-soft:#16294A;
+  --gold:#E3B25A; --gold-soft:#3A2D14; color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--font-text);font-size:15px;line-height:1.5;
+  padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.kicker{font:500 11px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-size:clamp(28px,4.4vw,42px);font-weight:600;letter-spacing:-.025em;line-height:1.1;margin:0 0 10px;text-wrap:balance}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.seg,.step{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button,.step button{font:500 13px var(--font-text);color:var(--ink);background:transparent;border:0;padding:9px 14px;cursor:pointer;min-height:38px}
+.seg button+button,.step button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--core);color:var(--on-core)}
+.seg button:hover:not([aria-pressed="true"]),.step button:hover:not(:disabled){background:var(--defense-soft)}
+.step button:disabled{color:var(--muted);cursor:default}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--defense);outline-offset:2px}
+.stepinfo{font:500 12px var(--font-mono);color:var(--muted)}
+.stage{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow-x:auto}
+.stage svg{display:block;width:100%;min-width:1040px;height:auto}
+.hint{display:none;margin:-8px 0 0;font:400 12px var(--font-mono);color:var(--muted)}
+@media (max-width:1080px){.hint{display:block}}
+.grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel,.legend{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:18px 20px;min-width:0}
+.panel{min-height:200px}
+.tag{display:inline-block;font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-bottom:8px}
+.panel h2{font-size:20px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+.panel p{margin:0 0 12px;max-width:62ch}
+.panel .cap{font-size:16px}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links-h{font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px}
+.chip{font:500 12.5px var(--font-text);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chip:hover{border-color:var(--defense)}
+.legend h3{font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.legend ul{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:9px;font-size:13.5px}
+.legend li{display:flex;gap:12px;align-items:center}
+.legend svg{flex:none;width:46px;height:12px;overflow:visible}
+.sw{flex:none;width:46px;height:14px;border-radius:4px;border:1.5px solid}
+.sw.core{background:var(--core);border-color:var(--core)}
+.sw.gold{background:var(--gold-soft);border-color:var(--gold)}
+.sw.def{background:var(--defense-soft);border-color:var(--defense)}
+.sw.threat{background:var(--threat-soft);border-color:var(--threat)}
+.sw.ok{background:var(--surface);border-color:var(--ok)}
+
+/* diagram */
+.band-t{fill:var(--band-threat);stroke:var(--line)}
+.band-s{fill:var(--band-service);stroke:var(--line)}
+.lane{font:500 10.5px var(--font-mono);letter-spacing:.14em;fill:var(--muted)}
+.node{cursor:pointer;transition:opacity .25s}
+.node rect{stroke-width:1.5;transition:stroke-width .15s}
+.node:hover rect{stroke-width:2.5}
+.node:focus{outline:none}
+.node:focus-visible rect,.node.sel rect{stroke:var(--ink);stroke-width:3}
+.tt{font:600 12.5px var(--font-text);fill:var(--ink)}
+.ts{font:500 9.5px var(--font-mono);fill:var(--muted)}
+.n-threat rect{fill:var(--threat-soft);stroke:var(--threat)}
+.n-core rect{fill:var(--core);stroke:var(--core)}
+.n-core .tt{fill:var(--on-core)} .n-core .ts{fill:var(--on-core);opacity:.78}
+.n-gold rect{fill:var(--gold-soft);stroke:var(--gold)}
+.n-def rect{fill:var(--defense-soft);stroke:var(--defense)}
+.n-out rect{fill:var(--surface);stroke:var(--muted)}
+.n-ok rect{fill:var(--surface);stroke:var(--ok)}
+.n-win rect{fill:var(--ok-soft);stroke:var(--ok)}
+.eg{transition:opacity .25s}
+.hit{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}
+.edge{fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.edge.dashed{stroke-dasharray:3 5}
+.edge.lit{stroke-width:2.6}
+.edge.flow{stroke-dasharray:7 6;animation:dash 1s linear infinite}
+.edge.dashed.flow{stroke-dasharray:3 5;animation-name:dash2}
+@keyframes dash{to{stroke-dashoffset:-13}}
+@keyframes dash2{to{stroke-dashoffset:-8}}
+.t-threat{stroke:var(--threat)} .t-core{stroke:var(--defense)} .t-ok{stroke:var(--ok)} .t-gold{stroke:var(--gold)}
+.eg.sel .edge{stroke-width:3}
+.lbl{font:500 10px var(--font-mono);fill:var(--muted);paint-order:stroke;stroke-width:4px;stroke-linejoin:round}
+.lbl.t{stroke:var(--band-threat)} .lbl.s{stroke:var(--band-service)}
+.pill rect{fill:var(--surface);stroke:var(--gold);stroke-width:1.5}
+.pill text{font:500 9.5px var(--font-mono);letter-spacing:.08em;fill:var(--gold)}
+.dim{opacity:.14} .pend{opacity:.38}
+@media (prefers-reduced-motion:reduce){.edge.flow{animation:none}.node,.eg{transition:none}}
+</style>
+
+<main class="wrap">
+  <header>
+    <p class="kicker">UAE anti-impersonation platform</p>
+    <h1>FalconGuard</h1>
+    <p class="lede">Fraud defence on top, the government service flow below. The two lanes meet at one checkpoint, the Bayanat.ae whitelist. Select any box or arrow to see what it does, or walk through a whole path.</p>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" data-mode="all" aria-pressed="true">Whole system</button>
+      <button type="button" data-mode="fraud" aria-pressed="false">Fraud attack path</button>
+      <button type="button" data-mode="service" aria-pressed="false">Service request path</button>
+    </div>
+    <div class="step" id="stepper" role="group" aria-label="Walkthrough" hidden>
+      <button type="button" id="prev">Back</button>
+      <button type="button" id="play">Play</button>
+      <button type="button" id="next">Next</button>
+      <button type="button" id="full">Show full path</button>
+    </div>
+    <span class="stepinfo" id="stepinfo"></span>
+  </div>
+
+  <div class="stage"><svg id="map" viewBox="0 0 1370 860" role="img" aria-label="Two-lane map. The top lane shows FalconGuard detecting fake sites and ads, checking them against the Bayanat.ae whitelist, then blocking and taking them down. The bottom lane shows a government service request moving from requester through gateway, access check, workflow and approval to fulfilment. A vertical link joins the gateway to the whitelist."></svg></div>
+  <p class="hint">Scroll sideways inside the map to see all of it.</p>
+
+  <div class="grid">
+    <section class="panel" id="panel" aria-live="polite"></section>
+    <aside class="legend">
+      <h3>Arrows</h3>
+      <ul>
+        <li><svg viewBox="0 0 46 12"><path d="M3,6 L41,6" stroke="var(--defense)" stroke-width="1.8" fill="none" marker-start="url(#m-core)" marker-end="url(#m-core)"/></svg>Two-way: request out, answer back</li>
+        <li><svg viewBox="0 0 46 12"><path d="M2,6 L41,6" stroke="var(--defense)" stroke-width="1.8" fill="none" marker-end="url(#m-core)"/></svg>One-way hand-off</li>
+        <li><svg viewBox="0 0 46 12"><path d="M2,6 L41,6" stroke="var(--defense)" stroke-width="1.8" stroke-dasharray="3 5" fill="none" marker-end="url(#m-core)"/></svg>Feedback or return path</li>
+        <li><svg viewBox="0 0 46 12"><path d="M2,6 L41,6" stroke="var(--threat)" stroke-width="1.8" fill="none" marker-end="url(#m-threat)"/></svg>Fraudulent traffic</li>
+        <li><svg viewBox="0 0 46 12"><path d="M2,6 L41,6" stroke="var(--ok)" stroke-width="1.8" fill="none" marker-end="url(#m-ok)"/></svg>Legitimate service traffic</li>
+        <li><svg viewBox="0 0 46 12"><path d="M3,6 L41,6" stroke="var(--gold)" stroke-width="1.8" fill="none" marker-start="url(#m-gold)" marker-end="url(#m-gold)"/></svg>Whitelist lookup</li>
+      </ul>
+      <h3>Boxes</h3>
+      <ul>
+        <li><span class="sw threat"></span>Threat or blocked request</li>
+        <li><span class="sw core"></span>FalconGuard engine</li>
+        <li><span class="sw gold"></span>National data source</li>
+        <li><span class="sw def"></span>Defences</li>
+        <li><span class="sw ok"></span>Government service step</li>
+      </ul>
+    </aside>
+  </div>
+</main>
+<script>
+const COL=[26,256,486,716,946,1176],W=168,H=66;
+const NODES=[
+ {id:'fraud',c:0,y:136,k:'threat',tag:'Threat source',t:['Fraudsters'],s:'fake sites · scam ads',
+  d:'Scammers register typosquatted domains, fake visa portals and fake B2B e-procurement invoice portals. They push them through malicious Google Search ads and Meta or TikTok sponsored ads.'},
+ {id:'crawler',c:1,y:136,k:'core',tag:'FalconGuard · detect',t:['OSINT &amp; ad','monitoring crawler'],s:'WHOIS · ad libraries',
+  d:'Watches digital channels continuously: public domain registries (WHOIS), search ad auctions and social ad libraries. It looks for anything that impersonates a government brand or service.'},
+ {id:'core',c:2,y:136,k:'core',tag:'FalconGuard · decide',t:['AI verification','&amp; multi-domain core'],s:'3 verticals checked',
+  d:'Compares each suspect domain, UI asset and invoice template with the official record. It covers three verticals: government payment portals (RTA, Finance Dept), immigration and visa portals (ICA, GDRFA), and B2B e-procurement and vendor portals.'},
+ {id:'bay',c:2,y:254,k:'gold',tag:'Zero-trust whitelist',t:['Bayanat.ae','open-data whitelist'],s:'zero-trust allow-list',
+  d:'The Bayanat.ae open data portal supplies the list of genuine domains and channels. Anything not on it is untrusted. Both the AI core and the government gateway check against it, which is why this one link joins the two lanes.'},
+ {id:'shield',c:3,y:60,k:'def',tag:'Defence · people',t:['Citizen &amp; vendor','shield'],s:'browser extension',
+  d:'A browser extension for citizens, residents and corporate procurement officers. When a click heads to a flagged clone, it shows a red block screen before any data or money is handed over.'},
+ {id:'soc',c:3,y:136,k:'def',tag:'Defence · command',t:['Government SOC','intelligence hub'],s:'live threat metrics',
+  d:'The SOC intelligence hub and takedown command shows live threat metrics: about 70% more threats identified and about 50% less public exposure. It hands confirmed cases to the takedown orchestrator.'},
+ {id:'banks',c:3,y:212,k:'def',tag:'Defence · money',t:['Banks &amp; payment','gateways'],s:'block unverified payees',
+  d:'Commercial banks and payment gateways receive automated API flags. They can block outgoing transactions or wire transfers headed to unverified accounts.'},
+ {id:'orch',c:4,y:136,k:'core',tag:'Takedown',t:['Takedown','orchestrator'],s:'forensic evidence pack',
+  d:'Packages the digital forensics (screenshots, WHOIS data, ad IDs) and triggers three escalations at once: ad-platform bans, registrar and hosting blacklisting, and direct escalation to aeCERT and legal teams.'},
+ {id:'res',c:5,y:136,k:'win',tag:'Outcome',t:['Trust restored'],s:'exposure eliminated',
+  d:'The threat is neutralised, exposure is eliminated and trust in the UAE digital economy is preserved. What was learned goes back to the crawler so the next clone is caught faster.'},
+ {id:'adt',c:3,y:378,k:'out',tag:'Takedown channel',t:['Ad trust teams'],s:'Google · Meta · TikTok',
+  d:'Automated API hooks to the Google, Meta and TikTok ad trust teams, asking them to ban the offending ad accounts.'},
+ {id:'reg',c:4,y:378,k:'out',tag:'Takedown channel',t:['Registrars &amp;','hosting abuse desks'],s:'instant blacklisting',
+  d:'Registrar and hosting abuse API requests so the fake server is blacklisted straight away.'},
+ {id:'aecert',c:5,y:378,k:'out',tag:'Takedown channel',t:['aeCERT &amp; legal','teams'],s:'national CERT escalation',
+  d:'Direct electronic escalation to aeCERT, plus Fujairah Finance and the legal teams of other affected entities.'},
+ {id:'act',c:0,y:548,k:'ok',tag:'Service · start',t:['Requesters'],s:'people &amp; companies',
+  d:'A citizen, resident, business or corporate procurement officer. They start from an official digital channel and get the result back at the end.'},
+ {id:'req',c:1,y:548,k:'ok',tag:'Service · step 1',t:['Service request'],s:'payment · visa · tender',
+  d:'A service request, payment, visa renewal application or vendor tender bid, submitted through an official digital channel.'},
+ {id:'gw',c:2,y:548,k:'ok',tag:'Service · step 2',t:['Gateway &amp;','access layer'],s:'API · load balancer',
+  d:'The government gateway for portals such as Fujairah Finance, RTA and ICA. Each request is checked against the Bayanat whitelist. Genuine traffic continues; look-alikes are diverted to the blocked branch below.'},
+ {id:'auth',c:3,y:548,k:'ok',tag:'Service · step 3',t:['Access &amp;','permission check'],s:'UAE PASS · OAuth · RBAC',
+  d:'Verifies user rights and roles: citizen or vendor account, role-based access control, and OAuth 2.0 / UAE PASS authentication.'},
+ {id:'wf',c:4,y:548,k:'ok',tag:'Service · step 4',t:['Internal workflow','&amp; routing'],s:'finance · treasury',
+  d:'The request moves to back-end department systems: finance, treasury and the approvals queue.'},
+ {id:'appr',c:5,y:548,k:'ok',tag:'Service · step 5',t:['Approval &amp;','compliance'],s:'review · reconcile',
+  d:'Department operators, financial controllers or data stewards review, approve, reconcile or process the transaction.'},
+ {id:'ful',c:5,y:712,k:'ok',tag:'Service · step 6',t:['Fulfilment &amp;','audit logging'],s:'immutable national log',
+  d:'The transaction completes: a permit is issued, a payment settles or a vendor is registered. Immutable logs are written for national audit compliance, and the result returns to the requester.'},
+ {id:'mal',c:2,y:712,k:'threat',tag:'Blocked branch',t:['Malicious request','intercepted'],s:'look-alike blocked',
+  d:'A fraudulent request or look-alike domain caught at the gateway through the Bayanat whitelist. The citizen shield blocks the deceptive site, and an automated hook sends the evidence to aeCERT and hosting providers for a ban.'}
+];
+const EDGES=[
+ {id:'e1',f:'fraud',t:'crawler',pts:[[194,169],[256,169]],tone:'threat',lb:'scanned',lx:225,ly:161,
+  d:'Fake domains and ads show up in registries, ad auctions and ad libraries, where the crawler finds them.'},
+ {id:'e2',f:'crawler',t:'core',pts:[[424,169],[486,169]],two:1,tone:'core',lb:'leads',lx:455,ly:161,
+  d:'Suspect domains, assets and invoice templates go to the AI core. Confirmed findings and tuning signals come back.'},
+ {id:'e3',f:'core',t:'bay',pts:[[570,202],[570,254]],two:1,tone:'gold',lb:'match ⇄ verdict',lx:578,ly:232,la:'start',
+  d:'The core asks the whitelist whether the domain is genuine. The verdict comes back: on the list, or not.'},
+ {id:'e4',f:'core',t:'shield',pts:[[654,169],[670,169],[670,93],[716,93]],tone:'core',lb:'block',lx:693,ly:86,
+  d:'A malicious verdict arms the shield, so the click is stopped with a red block screen.'},
+ {id:'e5',f:'core',t:'soc',pts:[[654,169],[716,169]],tone:'core',lb:'intel',lx:693,ly:161,
+  d:'Verdict and evidence populate the live threat metrics in the SOC hub.'},
+ {id:'e6',f:'core',t:'banks',pts:[[654,169],[670,169],[670,245],[716,245]],tone:'core',lb:'flag',lx:693,ly:238,
+  d:'An automated API flag tells banks and gateways to hold payments to unverified accounts.'},
+ {id:'e7',f:'soc',t:'orch',pts:[[884,169],[946,169]],two:1,tone:'core',lb:'escalate',lx:915,ly:161,
+  d:'The SOC hub escalates a confirmed case. Takedown status flows back so the metrics stay live.'},
+ {id:'e8',f:'orch',t:'res',pts:[[1114,169],[1176,169]],tone:'core',lb:'closed',lx:1145,ly:161,
+  d:'When the takedowns are confirmed, the case closes and trust is restored.'},
+ {id:'e9',f:'orch',t:'adt',pts:[[1030,202],[1030,348],[800,348],[800,378]],two:1,tone:'core',lb:'ban ads',lx:808,ly:366,la:'start',
+  d:'The evidence pack goes to the ad platforms; ban confirmations come back.'},
+ {id:'e10',f:'orch',t:'reg',pts:[[1030,202],[1030,378]],two:1,tone:'core',lb:'blacklist',lx:1038,ly:300,la:'start',
+  d:'Abuse requests go to registrars and hosts; blacklisting confirmations come back.'},
+ {id:'e11',f:'orch',t:'aecert',pts:[[1030,202],[1030,348],[1260,348],[1260,378]],two:1,tone:'core',lb:'escalate',lx:1268,ly:366,la:'start',
+  d:'The case file goes to aeCERT and legal teams; their acknowledgement comes back.'},
+ {id:'e12',f:'res',t:'crawler',pts:[[1260,136],[1260,40],[340,40],[340,136]],tone:'core',dash:1,lb:'new indicators sharpen detection',lx:800,ly:33,
+  d:'Every resolved case adds new indicators (domains, assets, ad IDs) that make the crawler faster next time.'},
+ {id:'s1',f:'act',t:'req',pts:[[194,581],[256,581]],tone:'ok',lb:'submit',lx:225,ly:573,
+  d:'The requester submits a payment, visa renewal or tender bid.'},
+ {id:'s2',f:'req',t:'gw',pts:[[424,581],[486,581]],two:1,tone:'ok',lb:'call',lx:455,ly:573,
+  d:'The request reaches the gateway. Responses travel back the same way.'},
+ {id:'s3',f:'gw',t:'auth',pts:[[654,581],[716,581]],two:1,tone:'ok',lb:'verify',lx:685,ly:573,
+  d:'The gateway asks for credentials and roles; the access check returns a decision.'},
+ {id:'s4',f:'auth',t:'wf',pts:[[884,581],[946,581]],two:1,tone:'ok',lb:'route',lx:915,ly:573,
+  d:'An authorised request is routed to back-end systems; status returns to the requester.'},
+ {id:'s5',f:'wf',t:'appr',pts:[[1114,581],[1176,581]],two:1,tone:'ok',lb:'decide',lx:1145,ly:573,
+  d:'The workflow submits for review; the approval decision comes back.'},
+ {id:'s6',f:'appr',t:'ful',pts:[[1260,614],[1260,712]],tone:'ok',lb:'approved',lx:1252,ly:668,la:'end',
+  d:'An approved request is fulfilled and written to the audit log.'},
+ {id:'s7',f:'ful',t:'act',pts:[[1260,778],[1260,816],[110,816],[110,614]],tone:'ok',dash:1,lb:'permit · receipt · confirmation return to the requester',lx:700,ly:808,
+  d:'The finished result goes back to the person who asked: a permit, a settled payment or a registration.'},
+ {id:'s8',f:'gw',t:'bay',pts:[[570,548],[570,320]],two:1,tone:'gold',lb:'whitelist lookup ⇄ verdict',lx:562,ly:428,la:'end',
+  d:'The shared checkpoint. The gateway looks the request up in the Bayanat whitelist and gets a verdict. This is where FalconGuard and the service flow connect.'},
+ {id:'s9',f:'gw',t:'mal',pts:[[570,614],[570,712]],tone:'threat',lb:'look-alike',lx:578,ly:668,la:'start',
+  d:'A request that fails the whitelist check is diverted to the blocked branch instead of continuing.'}
+];
+const PATHS={
+ fraud:[
+  {n:['fraud'],e:[],c:'Fraudsters register look-alike domains and buy search and social ads that copy a government service.'},
+  {n:['crawler'],e:['e1'],c:'The crawler spots them in WHOIS registries, ad auctions and ad libraries.'},
+  {n:['core'],e:['e2'],c:'The AI core compares each domain, UI asset and invoice template with the genuine ones.'},
+  {n:['bay'],e:['e3'],c:'It is not on the Bayanat.ae whitelist, so it is marked as a malicious clone.'},
+  {n:['shield','soc','banks'],e:['e4','e5','e6'],c:'Three defences fire at once: the shield blocks the click, the SOC hub logs it, and banks stop payments to the fake account.'},
+  {n:['gw','mal'],e:['s8','s9'],c:'The same whitelist check at the government gateway diverts look-alike requests to a blocked branch.'},
+  {n:['orch'],e:['e7'],c:'The SOC hub hands the case to the takedown orchestrator, which packs screenshots, WHOIS data and ad IDs.'},
+  {n:['adt','reg','aecert'],e:['e9','e10','e11'],c:'Ad accounts are banned, servers are blacklisted, and aeCERT and legal teams are notified.'},
+  {n:['res'],e:['e8','e12'],c:'The threat is neutralised and trust is restored. New indicators feed back to the crawler.'}
+ ],
+ service:[
+  {n:['act'],e:[],c:'A citizen, resident, business or procurement officer starts a request.'},
+  {n:['req'],e:['s1'],c:'They submit a payment, visa renewal or tender bid through an official channel.'},
+  {n:['gw'],e:['s2'],c:'The request reaches the government gateway.'},
+  {n:['bay'],e:['s8'],c:'The gateway checks the Bayanat whitelist. The site is genuine, so the request continues.'},
+  {n:['auth'],e:['s3'],c:'Credentials and roles are verified with UAE PASS, OAuth 2.0 and role-based access control.'},
+  {n:['wf'],e:['s4'],c:'The request is routed to finance, treasury and the approvals queue.'},
+  {n:['appr'],e:['s5'],c:'Operators and financial controllers review, approve and reconcile it.'},
+  {n:['ful'],e:['s6','s7'],c:'The permit is issued or payment settles, an immutable audit log is written, and the result returns to the requester.'}
+ ]
+};
+const MODE_INFO={
+ fraud:{h:'Fraud attack path',p:'From a fake portal or ad to a takedown. Press Play to watch it unfold, or step through with Next.'},
+ service:{h:'Service request path',p:'A genuine request from start to audit log. Press Play to watch it unfold, or step through with Next.'}
+};
+
+const NODE={},EDGE={};
+NODES.forEach(n=>{n.x=COL[n.c];NODE[n.id]=n});
+EDGES.forEach(e=>{EDGE[e.id]=e});
+const svg=document.getElementById('map');
+const TONES={threat:'--threat',core:'--defense',ok:'--ok',gold:'--gold'};
+const plain=s=>s.replace(/&amp;/g,'&');
+const nodeName=n=>plain(n.t.join(' '));
+
+function build(){
+  let h='<defs>'+Object.keys(TONES).map(k=>
+    `<marker id="m-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9z" style="fill:var(${TONES[k]})"/></marker>`).join('')+'</defs>';
+  h+='<rect class="band-t" x="8" y="8" width="1354" height="462" rx="14"/><rect class="band-s" x="8" y="496" width="1354" height="352" rx="14"/>';
+  h+='<text class="lane" x="26" y="30">FRAUD DEFENCE · FALCONGUARD ENGINE</text><text class="lane" x="26" y="522">GOVERNMENT SERVICE FLOW</text>';
+  h+=EDGES.map(e=>{
+    const d='M'+e.pts.map(p=>p.join(',')).join(' L');
+    const band=e.ly<470?'t':'s';
+    const cls='edge t-'+e.tone+(e.dash?' dashed':'');
+    const marks=` marker-end="url(#m-${e.tone})"`+(e.two?` marker-start="url(#m-${e.tone})"`:'');
+    const a=e.la||'middle';
+    return `<g class="eg" data-e="${e.id}"><path class="hit" d="${d}"/><path class="${cls}" d="${d}"${marks}/><text class="lbl ${band}" x="${e.lx}" y="${e.ly}" text-anchor="${a}">${e.lb}</text><title>${nodeName(NODE[e.f])} ${e.two?'⇄':'→'} ${nodeName(NODE[e.t])}: ${e.d}</title></g>`;
+  }).join('');
+  h+='<g class="pill"><rect x="488" y="472" width="164" height="22" rx="11"/><text x="570" y="487" text-anchor="middle">SHARED CHECKPOINT</text></g>';
+  h+=NODES.map(n=>{
+    const ty=n.t.length===1?n.y+27:n.y+23;
+    const lines=n.t.map((s,i)=>`<text class="tt" x="${n.x+12}" y="${ty+i*15}">${s}</text>`).join('');
+    return `<g class="node n-${n.k}" data-n="${n.id}" tabindex="0" role="button" aria-label="${nodeName(n)}"><rect x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="8"/>${lines}<text class="ts" x="${n.x+12}" y="${n.y+H-10}">${n.s}</text></g>`;
+  }).join('');
+  svg.innerHTML=h;
+}
+build();
+
+let mode='all',step=null,sel=null,timer=null;
+
+function compute(){
+  const N={},E={};
+  NODES.forEach(n=>N[n.id]='off');EDGES.forEach(e=>E[e.id]='off');
+  if(sel){
+    if(sel.t==='n'){
+      N[sel.id]='on';
+      EDGES.forEach(e=>{if(e.f===sel.id||e.t===sel.id){E[e.id]='on';N[e.f]='on';N[e.t]='on'}});
+    }else{const e=EDGE[sel.id];E[e.id]='on';N[e.f]='on';N[e.t]='on'}
+    return {N,E};
+  }
+  if(mode==='all'){Object.keys(N).forEach(k=>N[k]='on');Object.keys(E).forEach(k=>E[k]='on');return {N,E}}
+  PATHS[mode].forEach((s,i)=>{
+    const st=(step==null||i<=step)?'on':'pend';
+    const set=(o,id)=>{if(o[id]==='off'||st==='on')o[id]=st};
+    s.n.forEach(id=>set(N,id));s.e.forEach(id=>set(E,id));
+  });
+  return {N,E};
+}
+
+function paint(){
+  const {N,E}=compute();
+  const focus=mode!=='all'||!!sel;
+  svg.querySelectorAll('.node').forEach(g=>{
+    const id=g.dataset.n,s=N[id];
+    g.classList.toggle('dim',s==='off');g.classList.toggle('pend',s==='pend');
+    g.classList.toggle('sel',!!sel&&sel.t==='n'&&sel.id===id);
+  });
+  svg.querySelectorAll('.eg').forEach(g=>{
+    const id=g.dataset.e,s=E[id],p=g.querySelector('.edge');
+    g.classList.toggle('dim',s==='off');g.classList.toggle('pend',s==='pend');
+    g.classList.toggle('sel',!!sel&&sel.t==='e'&&sel.id===id);
+    p.classList.toggle('flow',focus&&s==='on');p.classList.toggle('lit',focus&&s==='on');
+  });
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  const st=document.getElementById('stepper');st.hidden=(mode==='all');
+  const len=mode==='all'?0:PATHS[mode].length;
+  document.getElementById('stepinfo').textContent=(mode!=='all'&&step!=null)?`Step ${step+1} of ${len}`:'';
+  document.getElementById('prev').disabled=(step===0);
+  document.getElementById('next').disabled=(step!=null&&step>=len-1);
+  document.getElementById('play').textContent=timer?'Pause':'Play';
+  panel();
+}
+
+function chips(id){
+  const out=[];
+  EDGES.forEach(e=>{
+    if(e.f!==id&&e.t!==id)return;
+    const o=e.f===id?e.t:e.f;
+    const g=e.two?'⇄':(e.f===id?'→':'←');
+    out.push(`<button type="button" class="chip" data-go="${o}" title="${e.lb}">${g} ${nodeName(NODE[o])}</button>`);
+  });
+  return out.join('');
+}
+
+function panel(){
+  const P=document.getElementById('panel');
+  if(sel&&sel.t==='n'){
+    const n=NODE[sel.id];
+    P.innerHTML=`<span class="tag">${n.tag}</span><h2>${n.t.join(' ')}</h2><p>${n.d}</p><div class="links-h">Connected to</div><div class="links">${chips(n.id)}</div>`;
+  }else if(sel){
+    const e=EDGE[sel.id];
+    P.innerHTML=`<span class="tag">${e.two?'Two-way link':'One-way link'}</span><h2>${NODE[e.f].t.join(' ')} ${e.two?'⇄':'→'} ${NODE[e.t].t.join(' ')}</h2><p>${e.d}</p><div class="links-h">Jump to</div><div class="links"><button type="button" class="chip" data-go="${e.f}">${nodeName(NODE[e.f])}</button><button type="button" class="chip" data-go="${e.t}">${nodeName(NODE[e.t])}</button></div>`;
+  }else if(mode!=='all'){
+    const info=MODE_INFO[mode],len=PATHS[mode].length;
+    if(step==null){
+      P.innerHTML=`<span class="tag">${len} steps</span><h2>${info.h}</h2><p>${info.p}</p>`;
+    }else{
+      P.innerHTML=`<span class="tag">${info.h} · step ${step+1} of ${len}</span><h2>${PATHS[mode][step].n.map(id=>nodeName(NODE[id])).join(', ')}</h2><p class="cap">${PATHS[mode][step].c}</p>`;
+    }
+  }else{
+    P.innerHTML=`<span class="tag">How to read this</span><h2>One product, two lanes</h2><p>The top lane is FalconGuard: it finds fake sites and ads, checks them against the Bayanat.ae whitelist, blocks them for people and banks, then takes them down. The bottom lane is a normal government service request. Both lanes use the same whitelist, so a look-alike that reaches the gateway is caught by the same check.</p><p>Select a box or an arrow for details, or pick a path above and press Play.</p>`;
+  }
+}
+
+function stop(){if(timer){clearInterval(timer);timer=null}}
+function setMode(m){stop();mode=m;step=null;sel=null;paint()}
+function go(delta){
+  if(mode==='all')return;
+  const len=PATHS[mode].length;
+  sel=null;
+  if(step==null)step=delta>0?0:Math.max(len-2,0);
+  else step=Math.min(Math.max(step+delta,0),len-1);
+  paint();
+}
+
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+document.getElementById('prev').addEventListener('click',()=>{stop();go(-1)});
+document.getElementById('next').addEventListener('click',()=>{stop();go(1)});
+document.getElementById('full').addEventListener('click',()=>{stop();step=null;sel=null;paint()});
+document.getElementById('play').addEventListener('click',()=>{
+  if(timer){stop();paint();return}
+  const len=PATHS[mode].length;sel=null;step=0;paint();
+  timer=setInterval(()=>{
+    if(step>=len-1){stop();paint();return}
+    step++;paint();
+  },2200);
+  paint();
+});
+
+function pick(t,id){stop();sel=(sel&&sel.t===t&&sel.id===id)?null:{t,id};paint()}
+svg.addEventListener('click',ev=>{
+  const n=ev.target.closest('.node'),e=ev.target.closest('.eg');
+  if(n)pick('n',n.dataset.n);else if(e)pick('e',e.dataset.e);else{sel=null;paint()}
+});
+svg.addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter'&&ev.key!==' ')return;
+  const n=ev.target.closest('.node');
+  if(n){ev.preventDefault();pick('n',n.dataset.n)}
+});
+document.getElementById('panel').addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-go]');
+  if(b){stop();sel={t:'n',id:b.dataset.go};paint()}
+});
+paint();
+</script>
+
+</body></html>
